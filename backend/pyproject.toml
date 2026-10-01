@@ -1,0 +1,23 @@
+[project]
+name = "harborstone-receivables"
+version = "0.1.0"
+description = "Harborstone receivables review API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.142.2",
+    "openai-agents>=0.22.3",
+    "psycopg-pool>=3.3.3",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-settings>=2.15.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

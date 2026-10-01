@@ -1,0 +1,55 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1c2430;
+  background: #f6f7f9;
+  --ok: #1f7a4d;
+  --problem: #b42318;
+  --muted: #5b6573;
+}
+
+body {
+  margin: 0;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.snapshot {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.readiness {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  margin-top: 24px;
+}
+
+.readiness dt {
+  font-weight: 600;
+}
+
+.readiness dd {
+  margin: 0;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.problem {
+  color: var(--problem);
+}
+
+.muted {
+  color: var(--muted);
+}

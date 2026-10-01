@@ -1,0 +1,72 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+.secrets/
+secrets/
+.aws/
+.ssh/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs and process files
+logs/
+*.log
+*.log.*
+*.pid
+*.pid.lock
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
+*.egg-info/
+build/
+
+# Test reports and coverage
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+test-results/
+playwright-report/
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Local databases and backups
+pgdata/
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite3-journal
+*.sqlite-wal
+*.sqlite3-wal
+*.sqlite-shm
+*.sqlite3-shm
+*.dump
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+*.bak
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
