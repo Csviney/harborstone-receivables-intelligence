@@ -63,7 +63,6 @@ class Summary(BaseModel):
     not_yet_due: Bucket
     unsent_billing: Bucket
     sync_failed: Bucket
-    scope: str
     limitations: list[str]
 
 
@@ -71,6 +70,29 @@ class Receivables(BaseModel):
     as_of: date
     summary: Summary
     invoices: list[InvoicePosition]
+
+
+class TrendPoint(BaseModel):
+    day: date
+    outstanding: Money
+    overdue: Money
+
+
+class TrendMovement(BaseModel):
+    start: date
+    end: date
+    opening: Money
+    added: Money
+    received: Money
+    closing: Money
+
+
+class ARTrend(BaseModel):
+    as_of: date
+    invoice_count: int
+    points: list[TrendPoint]
+    movements: list[TrendMovement]
+    limitations: list[str]
 
 
 class Contact(BaseModel):

@@ -4,6 +4,7 @@ from psycopg import AsyncConnection
 
 from . import receivables, source_queries
 from .schemas import (
+    ARTrend,
     Assignment,
     Bucket,
     Calculation,
@@ -18,13 +19,9 @@ from .schemas import (
     Receivables,
     SourceNote,
     Summary,
+    TrendMovement,
+    TrendPoint,
 )
-
-SUMMARY_SCOPE = (
-    "Outstanding AR covers invoices currently marked SENT and sent on or before the snapshot date, "
-    "less recorded payments. Unsent billing is invoice face value. USD assumed for this demo."
-)
-
 
 class SourceNotLoaded(Exception):
     pass
@@ -54,10 +51,25 @@ async def load_receivables(conn: AsyncConnection) -> Receivables:
             not_yet_due=Bucket(**vars(summary.not_yet_due)),
             unsent_billing=Bucket(**vars(summary.unsent_billing)),
             sync_failed=Bucket(**vars(summary.sync_failed)),
-            scope=SUMMARY_SCOPE,
             limitations=list(summary.limitations),
         ),
         invoices=[_position_out(row, positions[row["id"]]) for row in ordered],
+    )
+
+
+async def load_trend(conn: AsyncConnection) -> ARTrend:
+    as_of = await _as_of(conn)
+    rows = await source_queries.fetch_invoices(conn)
+    payments = _group(await source_queries.fetch_payments(conn))
+    result = receivables.trend(
+        (receivables.invoice_from_rows(row, payments[row["id"]], []) for row in rows), as_of
+    )
+    return ARTrend(
+        as_of=as_of,
+        invoice_count=result.invoice_count,
+        points=[TrendPoint(**vars(p)) for p in result.points],
+        movements=[TrendMovement(**vars(m)) for m in result.movements],
+        limitations=list(result.limitations),
     )
 
 

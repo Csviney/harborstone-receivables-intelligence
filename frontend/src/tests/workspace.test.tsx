@@ -44,7 +44,6 @@ const receivables: Receivables = {
     not_yet_due: { amount: "0.00", count: 0 },
     unsent_billing: { amount: "1000.00", count: 1 },
     sync_failed: { amount: "0.00", count: 0 },
-    scope: "Scope text.",
     limitations: [],
   },
   invoices: [invoiceA, invoiceB, invoiceC],
@@ -267,18 +266,22 @@ test("paid and not-yet-due invoices don't offer an assessment", async () => {
   expect(within(panel).queryByRole("button", { name: "Assess invoice" })).not.toBeInTheDocument();
 });
 
-test("the summary keeps exclusions visible and the calculation scope behind a disclosure", async () => {
+test("the summary shows the cards and any data limitations, without explanatory notes", async () => {
+  const limitation = "1 invoice(s) with incomplete amounts are excluded.";
   mockApi({
     "/api/receivables": () =>
-      json({ ...receivables, summary: { ...receivables.summary, sync_failed: { amount: "57300.00", count: 1 } } }),
+      json({
+        ...receivables,
+        summary: { ...receivables.summary, sync_failed: { amount: "57300.00", count: 1 }, limitations: [limitation] },
+      }),
     "/api/invoices/a": () => json(detail(invoiceA)),
   });
   render(<App />);
 
   const summary = await screen.findByRole("region", { name: "Summary" });
-  expect(within(summary).getByText(/Excludes 1 invoice\(s\) with a failed accounting sync/)).toBeVisible();
-  const scope = within(summary).getByText("Scope text.");
-  expect(scope.closest("details")).not.toHaveAttribute("open");
+  expect(within(summary).getByText(limitation)).toBeVisible();
+  expect(summary.textContent).not.toMatch(/failed accounting sync|How these totals|USD assumed/);
+  expect(summary.querySelector("details")).toBeNull();
 });
 
 const EMAIL: SuggestedEmail = {
@@ -455,4 +458,69 @@ test("citations are labeled and described from the saved evidence, not the curre
   await userEvent.click(within(panel).getByRole("button", { name: "Project note · Jul 12, 2026" }));
   expect(within(panel).getByText("Note").nextSibling).toHaveTextContent("Crane booked.");
   expect(within(panel).getByText("Written by").nextSibling).toHaveTextContent("tasha@example.com");
+});
+
+const trend = {
+  as_of: "2026-07-28",
+  invoice_count: 2,
+  points: [
+    { day: "2026-06-30", outstanding: "1000.00", overdue: "0.00" },
+    { day: "2026-07-28", outstanding: "600.00", overdue: "600.00" },
+  ],
+  movements: [
+    { start: "2026-06-01", end: "2026-06-30", opening: "0.00", added: "1000.00", received: "0.00", closing: "1000.00" },
+    { start: "2026-07-01", end: "2026-07-28", opening: "1000.00", added: "0.00", received: "400.00", closing: "600.00" },
+  ],
+  limitations: [],
+};
+
+const trendCalls = () => (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => url === "/api/receivables/trend");
+
+test("AR over time loads once when first opened and stays independent of worklist filters", async () => {
+  mockApi({
+    "/api/receivables": () => json(receivables),
+    "/api/invoices/a": () => json(detail(invoiceA)),
+    "/api/receivables/trend": () => json(trend),
+  });
+  render(<App />);
+
+  const summary = await screen.findByText("AR over time");
+  const section = summary.closest("details")!;
+  expect(section).not.toHaveAttribute("open");
+  expect(trendCalls()).toHaveLength(0);
+
+  await userEvent.click(summary);
+  expect(await within(section).findByRole("row", { name: /June 2026 \$0\.00 \$1,000\.00 \$0\.00 \$1,000\.00/ }))
+    .toBeInTheDocument();
+  expect(within(section).getByRole("row", { name: /Jul 1 – Jul 28, 2026 \$1,000\.00 \$0\.00 \$400\.00 \$600\.00/ }))
+    .toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("tab", { name: /Billing review/ }));
+  await userEvent.click(summary);
+  await userEvent.click(summary);
+  expect(within(section).getByText(/June 2026/)).toBeInTheDocument();
+  expect(trendCalls()).toHaveLength(1);
+});
+
+test("AR over time shows loading, then an error with a working retry", async () => {
+  let fail = true;
+  let finish: (response: Response) => void = () => {};
+  mockApi({
+    "/api/receivables": () => json(receivables),
+    "/api/invoices/a": () => json(detail(invoiceA)),
+    "/api/receivables/trend": () =>
+      fail ? new Promise((resolve) => (finish = resolve)) : json(trend),
+  });
+  render(<App />);
+
+  const summary = await screen.findByText("AR over time");
+  await userEvent.click(summary);
+  expect(screen.getByText("Loading the trend…")).toBeInTheDocument();
+
+  finish(new Response(JSON.stringify({ detail: { message: "Source data is unavailable." } }), { status: 503 }));
+  expect(await screen.findByText("Couldn't load the trend. Source data is unavailable.")).toBeInTheDocument();
+
+  fail = false;
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(await screen.findByText(/June 2026/)).toBeInTheDocument();
 });

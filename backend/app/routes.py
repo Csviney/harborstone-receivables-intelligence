@@ -4,8 +4,9 @@ from psycopg_pool import AsyncConnectionPool, PoolTimeout
 
 from . import app_queries, investigations, source_queries
 from .config import Settings
-from .invoices import load_invoice_detail, load_receivables
+from .invoices import load_invoice_detail, load_receivables, load_trend
 from .schemas import (
+    ARTrend,
     DatabaseStatus,
     Health,
     InvestigationRequest,
@@ -54,6 +55,12 @@ async def health(request: Request, response: Response) -> Health:
 async def list_receivables(request: Request) -> Receivables:
     async with request.app.state.pool.connection() as conn:
         return await load_receivables(conn)
+
+
+@router.get("/receivables/trend", response_model=ARTrend)
+async def receivables_trend(request: Request) -> ARTrend:
+    async with request.app.state.pool.connection() as conn:
+        return await load_trend(conn)
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetail)

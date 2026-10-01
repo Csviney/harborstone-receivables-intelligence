@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 SENT, DRAFT, APPROVED, SYNC_FAILED = "SENT", "DRAFT", "APPROVED", "SYNC_FAILED"
@@ -236,6 +236,98 @@ def _balance_bucket(positions: list[Position]) -> Bucket:
 
 def _total_bucket(positions: list[Position]) -> Bucket:
     return Bucket(sum((p.invoice.total for p in positions if p.invoice.total is not None), ZERO), len(positions))
+
+
+@dataclass(frozen=True)
+class TrendPoint:
+    day: date
+    outstanding: Decimal
+    overdue: Decimal
+
+
+@dataclass(frozen=True)
+class Movement:
+    start: date
+    end: date
+    opening: Decimal
+    added: Decimal
+    received: Decimal
+    closing: Decimal
+
+
+@dataclass(frozen=True)
+class Trend:
+    invoice_count: int
+    points: tuple[TrendPoint, ...]
+    movements: tuple[Movement, ...]
+    limitations: tuple[str, ...]
+
+
+def trend(invoices: Iterable[Invoice], as_of: date) -> Trend:
+    """Daily outstanding and overdue AR rebuilt from send and payment dates.
+
+    Covers the invoices currently marked SENT, including ones now paid. Status is only known at the snapshot, so
+    this reconstructs that population's history; it is not a historical accounting ledger.
+    """
+    sent = [i for i in invoices if i.status == SENT]
+    population = [i for i in sent if i.sent_date and i.sent_date <= as_of]
+    # Without trustworthy amounts and dates there is no way to place an invoice on a given day.
+    usable = [i for i in population if _has_history(i, as_of)]
+    limitations = []
+    if undated := sum(1 for i in sent if i.sent_date is None):
+        limitations.append(f"{undated} SENT invoice(s) left out: no send date.")
+    if len(usable) < len(population):
+        limitations.append(f"{len(population) - len(usable)} invoice(s) left out: a missing amount or date, "
+                           "or a payment recorded before the invoice was sent.")
+    # Balances only change on payment days, so checking those days covers the whole period.
+    if any(_balance_on(i, p.payment_date) < 0 for i in usable for p in i.payments if p.payment_date <= as_of):
+        limitations.append("Includes invoices whose recorded payments exceeded the invoice total on some days, "
+                           "such as an overpayment later reversed.")
+    if not usable:
+        return Trend(0, (), (), tuple(limitations))
+
+    start = min(i.sent_date for i in usable).replace(day=1)
+    points = tuple(_trend_point(usable, start + timedelta(days=n)) for n in range((as_of - start).days + 1))
+
+    movements = []
+    month_start = start
+    while month_start <= as_of:
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month_end = min(next_month - timedelta(days=1), as_of)
+        movements.append(Movement(
+            start=month_start,
+            end=month_end,
+            opening=_outstanding(usable, month_start - timedelta(days=1)),
+            added=sum((i.total for i in usable if month_start <= i.sent_date <= month_end), ZERO),
+            received=sum((p.amount for i in usable for p in i.payments if month_start <= p.payment_date <= month_end),
+                         ZERO),
+            closing=_outstanding(usable, month_end),
+        ))
+        month_start = next_month
+    return Trend(len(usable), points, tuple(movements), tuple(limitations))
+
+
+def _has_history(invoice: Invoice, as_of: date) -> bool:
+    # Payments after the snapshot never enter the trend; an undated one might fall inside it.
+    in_period = [p for p in invoice.payments if p.payment_date is None or p.payment_date <= as_of]
+    return invoice.total is not None and invoice.due_date is not None and all(
+        p.amount is not None and p.payment_date is not None and p.payment_date >= invoice.sent_date
+        for p in in_period
+    )
+
+
+def _balance_on(invoice: Invoice, day: date) -> Decimal:
+    return invoice.total - sum((p.amount for p in invoice.payments if p.payment_date <= day), ZERO)
+
+
+def _outstanding(invoices: list[Invoice], day: date) -> Decimal:
+    return sum((_balance_on(i, day) for i in invoices if i.sent_date <= day), ZERO)
+
+
+def _trend_point(invoices: list[Invoice], day: date) -> TrendPoint:
+    balances = [(i, _balance_on(i, day)) for i in invoices if i.sent_date <= day]
+    overdue = sum((b for i, b in balances if b > 0 and i.due_date < day), ZERO)
+    return TrendPoint(day, sum((b for _, b in balances), ZERO), overdue)
 
 
 def context_issues(

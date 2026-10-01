@@ -1,6 +1,6 @@
 # Implementation plan
 
-Build [Product.md](Product.md)'s four user stories (S1–S4) through the four delivery slices below. [Data.md](Data.md) owns calculations; [Architecture.md](Architecture.md) owns boundaries; [Investigation.md](Investigation.md) owns model behavior. Restore the reference SQL rather than parsing it or using mock data/assessments as application truth. Keep the root README empty for now.
+Build [Product.md](Product.md)'s four user stories (S1–S4) through the four delivery slices below. [Data.md](Data.md) owns calculations; [Architecture.md](Architecture.md) owns boundaries; [Investigation.md](Investigation.md) owns model behavior. Restore the reference SQL rather than parsing it or using mock data/assessments as application truth.
 
 ## 1. Runnable foundation
 
@@ -24,21 +24,21 @@ Implement the evidence bundle/hash, reuse, duplicate-run guard, two context tool
 
 ## 4. Review findings and act — S4
 
-Show each assessment's findings, cautions, and recommendation with citations that open the evidence saved with that run, using readable labels. Show a suggested email only when present, read-only, with Copy email; an outdated assessment must be refreshed before copying. Label stale analysis. Keep developer diagnostics out of the interface. Pair it with the rule-based next step, which names where to act in the existing accounting, CRM, or project system without inventing links. Keep the summary snapshot and material limitations visible and the detailed calculation scope behind a disclosure.
+Show each assessment's findings, cautions, and recommendation with citations that open the evidence saved with that run, using readable labels. Show a suggested email only when present, read-only, with Copy email; an outdated assessment must be refreshed before copying. Label stale analysis. Keep developer diagnostics out of the interface. Pair it with the rule-based next step, which names where to act in the existing accounting, CRM, or project system without inventing links. Keep the summary snapshot and material data limitations visible.
 
 **Complete / commit:** revisiting reuses analysis; citations show saved records after source changes; outdated results are labeled and their email can't be copied. Copy only writes to the clipboard. Nothing is editable, and there are no sending, outreach tracking, dismissal, resolution, or source-change controls.
 
-## Planned extension — Compact history
+## 5. Compact history — S1
 
-Implement daily step-series and monthly movements using Data.md's selected population and sent/payment dates, including now-paid invoices. Add one expandable chart and calculation scope; no separate analytics page.
+Implement daily step-series and monthly movements using Data.md's selected population and sent/payment dates, including now-paid invoices. Add one expandable chart with monthly movements; no separate analytics page.
 
-**Complete / commit:** chart endpoint equals the summary; monthly reconciliation checks pass; receipt timing is correct; population/currency/timezone assumptions are visible. All financial arithmetic stays on the backend.
+**Complete / commit:** chart endpoint equals the summary; monthly reconciliation checks pass; receipt timing is correct; population, currency, and timezone assumptions are documented in Data.md. All financial arithmetic stays on the backend.
 
 ## Validate the complete journey
 
 Test fresh setup and application restart. Run backend tests, TypeScript checking, focused frontend tests, and the frontend build. Perform a small explicit live assessment check separately from normal tests. Prioritize correct behavior over extra screens or visual effects.
 
-**Complete / commit:** another developer can reproduce the numerical checks and three demonstrations, and trace UI → route → calculation/query → optional model tools → validation → persistence → UI. Record actual test findings/tradeoffs in DesignDecisions.md and deferred work in FutureDirections.md. Do not claim intended tests were executed. Leave README empty until requested.
+**Complete / commit:** another developer can reproduce the numerical checks and three demonstrations, and trace UI → route → calculation/query → optional model tools → validation → persistence → UI. Record actual test findings/tradeoffs in DesignDecisions.md and deferred work in FutureDirections.md. Do not claim intended tests were executed.
 
 ## Focused checks
 

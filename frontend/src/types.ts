@@ -34,7 +34,6 @@ export type Receivables = {
     not_yet_due: Bucket;
     unsent_billing: Bucket;
     sync_failed: Bucket;
-    scope: string;
     limitations: string[];
   };
   invoices: InvoicePosition[];
@@ -130,3 +129,11 @@ export type InvestigationState = {
 };
 
 export type InvestigationResult = { investigation: Investigation; reused: boolean };
+
+export type ARTrend = {
+  as_of: string;
+  invoice_count: number;
+  points: { day: string; outstanding: string; overdue: string }[];
+  movements: { start: string; end: string; opening: string; added: string; received: string; closing: string }[];
+  limitations: string[];
+};

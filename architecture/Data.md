@@ -12,7 +12,7 @@ Input: [source_data.sql](../data/source_data.sql), schema `source_company`, 42 t
 
 Preserve the dump. Source IDs are strings, not universally valid UUIDs. The three platform categories below are logical business origins in a consolidated export, not verified platform-specific integrations.
 
-**Reporting conventions:** use UTC calendar dates from supplied timestamps and end-of-day inclusion through the source cutoff. This is a demo convention, not a documented company accounting timezone. AR rows have no currency column: display dollar amounts under an explicit **USD assumed for this demo** label in calculation scope; do not imply source-verified currency or support conversion. Source dates determine business reporting; current UTC timestamps record application activity. Do not advance the reporting cutoff to today's date.
+**Reporting conventions:** use UTC calendar dates from supplied timestamps and end-of-day inclusion through the source cutoff. This is a demo convention, not a documented company accounting timezone. AR rows have no currency column: amounts are treated as USD for this demo; do not imply source-verified currency or support conversion. Source dates determine business reporting; current UTC timestamps record application activity. Do not advance the reporting cutoff to today's date.
 
 ## Relevant source entities and joins
 
@@ -62,7 +62,7 @@ The primary AR summary uses invoices whose **current source status is `SENT`** a
 | Unsent billing to review, APPROVED + DRAFT | **$311,800.00** |
 | SYNC_FAILED, 1 invoice, outside the AR summary | $57,300.00 |
 
-Unsent totals are invoice face values, not collectible overdue AR. The sync-failed row has a send date: excluding it is a deliberately conservative, **status-scoped** reporting choice, not proof the customer never received it. Summary cards always retain this scope; filtering the list must not silently change their meaning. Unexpected invalid/credit positions require a visible metric limitation, not an unqualified “verified total.”
+Unsent totals are invoice face values, not collectible overdue AR. The sync-failed row has a send date: excluding it is a deliberately conservative, **status-scoped** reporting choice, not proof the customer never received it. Summary cards always use this scope; filtering the list must not change their meaning. Unexpected invalid/credit positions require a visible metric limitation, not an unqualified “verified total.”
 
 ## F3 — Dates and aging
 
@@ -94,7 +94,7 @@ Ordering: Collections by overdue days descending, remaining balance descending, 
 
 ## F5 — Compact historical trend
 
-Planned extension; the current application does not expose a trend endpoint or chart.
+Served by `GET /api/receivables/trend` and shown in the collapsed **AR over time** section.
 
 Use all 16 invoices in the current SENT population, **including those now fully paid**. For each UTC day May 1–July 28, 2026:
 
@@ -107,7 +107,7 @@ overdue(t) = sum(positive balance_at_t(i) for included invoices with due_date_ut
 
 All selected data has valid send/payment dates and no pre-send payments or credit adjustments. If a replacement dataset violates those assumptions, flag/exclude unsupported historical calculations with a visible reason; do not silently invent event timing or adjustment logic.
 
-Use a step-style graph, not smoothed values between financial events. Tooltip values come from backend strings. Label it **“Reconstructed balances for 16 currently SENT invoices; not complete historical accounting AR.”** Current statuses are known only at the snapshot, so do not imply a historical status audit. No future projections or simulated recovery events.
+Use a step-style graph, not smoothed values between financial events. Tooltip values come from backend strings. The chart reconstructs the current SENT population; it is not complete historical accounting AR. Current statuses are known only at the snapshot, so do not imply a historical status audit. No future projections or simulated recovery events.
 
 The same selected population reconciles by month:
 
@@ -153,7 +153,7 @@ The invoice-to-investigation link is a logical source reference, not a cross-sch
 |---|---|
 | `app.investigations` | `id`, `invoice_id` string, `snapshot_as_of` date, `input_hash`, `analysis_version`, `model`, `status` (running/completed/failed), `input_json`, nullable `output_json`, `trace_json`, nullable `usage_json`, `started_at`, nullable `finished_at`, nullable sanitized `error_code` / `error_message`. Index invoice/start time; partial unique invoice/input_hash while running. |
 
-`InvoicePosition`, summary buckets, and calculation evidence are computed responses, not stored tables. Position includes the invoice ID, display context, source status, total/paid/remainder, payment position, overdue days, category, reason, and warnings; the detail response carries calculation/source references. Assessment fields and the optional email template are stored in `output_json`; the rendered email is returned from the saved evidence. Keep `input_json` scoped to the selected invoice and its related entities, not the entire dump. The planned trend response would contain date/amount points, population label, monthly movements, and limitations.
+`InvoicePosition`, summary buckets, calculation evidence, and the AR trend are computed responses, not stored tables. Position includes the invoice ID, display context, source status, total/paid/remainder, payment position, overdue days, category, reason, and warnings; the detail response carries calculation/source references. Assessment fields and the optional email template are stored in `output_json`; the rendered email is returned from the saved evidence. Keep `input_json` scoped to the selected invoice and its related entities, not the entire dump. The planned trend response would contain date/amount points, population label, monthly movements, and limitations.
 
 ## Evidence and reuse identity
 

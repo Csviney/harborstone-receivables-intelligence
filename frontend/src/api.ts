@@ -1,4 +1,4 @@
-import type { InvestigationResult, InvoiceDetail, Receivables } from "./types";
+import type { ARTrend, InvestigationResult, InvoiceDetail, Receivables } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -22,6 +22,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const fetchReceivables = () => request<Receivables>("/receivables");
+
+export const fetchTrend = () => request<ARTrend>("/receivables/trend");
 
 export const fetchInvoice = (id: string, signal?: AbortSignal) =>
   request<InvoiceDetail>(`/invoices/${encodeURIComponent(id)}`, { signal });

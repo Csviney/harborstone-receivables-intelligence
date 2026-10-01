@@ -10,7 +10,7 @@ Deliver a narrow, working, interactive demo with defensible choices; pixel-perfe
 
 ## Guide map
 
-Read Product → [Data](Data.md) → [Architecture](Architecture.md) → [Investigation](Investigation.md) → [ImplementationPlan](ImplementationPlan.md). Each owns its respective contract; do not duplicate financial rules in UI or agent code. [DesignDecisions](DesignDecisions.md) records accepted choices and actual findings; [FutureDirections](FutureDirections.md) is not committed scope. The root README is intentionally empty for now.
+Read Product → [Data](Data.md) → [Architecture](Architecture.md) → [Investigation](Investigation.md) → [ImplementationPlan](ImplementationPlan.md). Each owns its respective contract; do not duplicate financial rules in UI or agent code. [DesignDecisions](DesignDecisions.md) records accepted choices and actual findings; [FutureDirections](FutureDirections.md) is not committed scope. The root [README](../README.md) covers rationale, setup, and checks.
 
 ## User and stakeholder value
 
@@ -38,9 +38,9 @@ Source employee titles may differ from the brief's stakeholder titles. Display s
 
 ## Interface contract
 
-A summary strip shows outstanding AR, its overdue portion, and unsent billing separately. A sparkline expands to one trend and its calculation scope. Below it, place one worklist and one detail panel. Default to Collections; offer Billing review, Verify first, and All. All includes not-yet-due and paid invoices. Use Data.md's amounts, labels, and ordering.
+A summary strip shows outstanding AR, its overdue portion, and unsent billing separately. Below it, a collapsed **AR over time** section loads one step chart of daily outstanding and overdue AR with monthly movements; it ignores worklist filters. Below it, place one worklist and one detail panel. Default to Collections; offer Billing review, Verify first, and All. All includes not-yet-due and paid invoices. Use Data.md's amounts, labels, and ordering.
 
-Keep the snapshot date and material limitations visible; put the detailed calculation scope behind a disclosure.
+Keep the snapshot date and any material data limitations visible; no explanatory calculation notes are needed in the user's view.
 
 In detail, show facts, warnings, and the rule-based next step before any assessment; the normal view never calls a model. State where the next step belongs: customer follow-up, billing review in the accounting system, or finance verification. Do not invent external-system links. Keep balance details (total, payments counted through the snapshot, remaining balance, and any excluded payments or uncertainty, or face value and billing status for unsent invoices) collapsed until requested; each citation opens the record as it was saved with that assessment, with readable labels.
 

@@ -197,3 +197,17 @@ def test_evidence_separates_counted_and_excluded_payments(client, monkeypatch):
     assert [p["counted"] for p in detail["payments"]] == [True, False]
     assert detail["calculation"]["source_refs"] == [detail["ref"], detail["payments"][0]["ref"]]
     assert detail["calculation"]["excluded_refs"] == ["source_company.ar_payments:future-payment"]
+
+
+def test_trend_reconciles_with_the_summary_and_monthly_movements(client):
+    body = client.get("/api/receivables/trend").json()
+
+    assert body["invoice_count"] == 16
+    assert (body["points"][0]["day"], body["points"][-1]["day"]) == ("2026-05-01", "2026-07-28")
+    assert body["points"][-1] == {"day": "2026-07-28", "outstanding": "1108464.00", "overdue": "719004.00"}
+    assert [(m["opening"], m["added"], m["received"], m["closing"]) for m in body["movements"]] == [
+        ("0.00", "931400.00", "146200.00", "785200.00"),
+        ("785200.00", "1209400.00", "915100.00", "1079500.00"),
+        ("1079500.00", "664200.00", "635236.00", "1108464.00"),
+    ]
+    assert body["limitations"] == []

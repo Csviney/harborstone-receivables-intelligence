@@ -75,7 +75,7 @@ Keep credentials out of git and traces. The app's own execution record is local;
 This is a target structure, not generated application code. Create files as their functionality is implemented; retain normal generated frontend configuration without documenting every scaffold file.
 
 ```text
-README.md                         # Intentionally blank for now
+README.md                         # Project rationale, setup, and checks
 architecture/                     # These guides
   reference/                      # Original brief, assignment, data reviews,
                                   # source_data.sql, approved focused HTML mock
@@ -118,7 +118,7 @@ frontend/
     components/
       ReceivablesQueue.tsx        # Search, categories, priority reason, selection
       InvoiceDetail.tsx          # Facts, project/customer context, warnings
-      ARTrend.tsx                # Compact graph and calculation scope
+      ARTrend.tsx                # Collapsed AR-over-time section; loads the chart
       InvestigationPanel.tsx     # Run control, assessment, error/retry states
       BalanceDetails.tsx         # Balance breakdown, counted and excluded payments
       ui/                        # Only shared primitives actually used
