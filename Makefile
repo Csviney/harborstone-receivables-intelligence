@@ -25,7 +25,7 @@ frontend:
 
 test:
 	cd backend && $(UV) run pytest -q
-	cd frontend && npm run typecheck
+	cd frontend && npm run typecheck && npm test
 
 typecheck:
 	cd frontend && npm run typecheck

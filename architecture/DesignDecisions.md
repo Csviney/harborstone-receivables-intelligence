@@ -25,6 +25,12 @@ Living record. Entries below are accepted planning decisions, **not claims of im
 - **Source records and generated text are protected by the database, not only the UI.** The runtime role can read source data but not change it, cannot alter a draft's original generated text, and can only append activity events (supports D02, D09, D11). Validated by setup checks and tests.
 - **The model must be constrained to permitted actions.** `gpt-4o-mini` handles tool calls and structured output. In an early unconstrained check it proposed billing review for a paid invoice with a conflicting note, where Data.md requires verification. Investigations will therefore supply the allowed actions and reject anything outside them.
 
+**2026-09-30 — Source-backed review**
+
+- **The worklist opens on Collections with the most overdue invoice selected.** Billing review and Verify first are one click away; All adds not-yet-due and paid invoices. Search and selection persist across filters.
+- **Unsent invoices show face value only.** Billing-review items have no paid, remaining, or aging figures, so they never read as collectible debt.
+- **Each invoice states where its next step belongs:** customer communication, internal billing review, finance verification, or no action. This follows from the triage category, not from AI. Validated against Data.md's totals, the 5/4/2/4/6 split, and the reference invoices.
+
 Use a compact entry when a material choice changes or is validated:
 
 ```text
