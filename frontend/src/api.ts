@@ -1,4 +1,4 @@
-import type { InvoiceDetail, Receivables } from "./types";
+import type { InvestigationResult, InvoiceDetail, Receivables } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -9,8 +9,11 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`/api${path}`, { headers: { Accept: "application/json" }, signal });
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    ...init,
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+  });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new ApiError(response.status, body?.detail?.message ?? `Request failed (${response.status})`);
@@ -18,7 +21,13 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const fetchReceivables = () => getJson<Receivables>("/receivables");
+export const fetchReceivables = () => request<Receivables>("/receivables");
 
 export const fetchInvoice = (id: string, signal?: AbortSignal) =>
-  getJson<InvoiceDetail>(`/invoices/${encodeURIComponent(id)}`, signal);
+  request<InvoiceDetail>(`/invoices/${encodeURIComponent(id)}`, { signal });
+
+export const assessInvoice = (id: string, refresh: boolean) =>
+  request<InvestigationResult>(`/invoices/${encodeURIComponent(id)}/investigations`, {
+    method: "POST",
+    body: JSON.stringify({ refresh }),
+  });

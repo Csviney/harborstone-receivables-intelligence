@@ -9,6 +9,13 @@ CATEGORIES = ("verify", "collect", "billing", "monitor", "settled")
 REQUIRED_CAPACITIES = ("Primary AE", "Primary Ops Manager")
 ZERO = Decimal("0.00")
 
+# Actions an assessment may suggest. Not-yet-due and paid invoices have nothing to interpret, so they aren't assessed.
+ALLOWED_ACTIONS = {
+    "verify": ("internal_verification", "no_outreach"),
+    "billing": ("internal_billing_review", "internal_verification", "no_outreach"),
+    "collect": ("customer_followup", "internal_verification", "no_outreach"),
+}
+
 # Verify-first ordering: data integrity problems, then note conflicts, then sync failures.
 ISSUE_RANK = {"later_note": 1, "sync_failed": 2}
 

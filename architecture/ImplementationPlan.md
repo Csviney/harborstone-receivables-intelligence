@@ -1,10 +1,10 @@
 # Implementation plan
 
-Build [Product.md](Product.md)'s four stories as working slices. [Data.md](Data.md) owns calculations; [Architecture.md](Architecture.md) owns boundaries; [Agent.md](Agent.md) owns model behavior. Restore the reference SQL rather than parsing it or using the mock's embedded data/assessments as application truth. Keep the root README empty for now.
+Build [Product.md](Product.md)'s four user stories (S1–S4) through the four delivery slices below. [Data.md](Data.md) owns calculations; [Architecture.md](Architecture.md) owns boundaries; [Investigation.md](Investigation.md) owns model behavior. Restore the reference SQL rather than parsing it or using mock data/assessments as application truth. Keep the root README empty for now.
 
 ## 1. Runnable foundation
 
-Create backend/frontend scaffolds, environment example, local PostgreSQL Compose service, explicit setup script, and the three app tables. Restore `architecture/reference/source_data.sql`; grant a restricted runtime role. Start FastAPI's async pool and readiness endpoint.
+Create backend/frontend scaffolds, environment example, local PostgreSQL Compose service, explicit setup script, and the app investigations table. Restore `data/source_data.sql`; grant a restricted runtime role. Start FastAPI's async pool and readiness endpoint.
 
 Select accessible model/package versions and run one isolated tool/structured-output smoke test. Missing model credentials should disable assessment, not read-only startup; never call the model automatically on startup.
 
@@ -12,29 +12,29 @@ Select accessible model/package versions and run one isolated tool/structured-ou
 
 ## 2. Source-backed review — S1/S2
 
-Implement joins with payment aggregation before one-to-many context. Implement pure Decimal/date functions for balances, totals, categories, and ordering. Connect the summary/worklist/detail endpoints to a single screen with filters, search, warnings, assignments, and expandable evidence.
+Fetch payments separately and group them per invoice to avoid multiplying amounts through context joins. Implement pure Decimal/date functions for balances, totals, categories, and ordering. Connect the summary/worklist/detail endpoints to a single screen with filters, search, warnings, assignments, and expandable balance details.
 
 **Complete / commit:** all 21 invoices remain accessible; Data.md's amounts and 5/4/2/4/6 category partition reconcile; partial/paid/unsent labels are accurate; selection, empty search, and source errors work. No model calls.
 
 ## 3. Bounded investigation — S3
 
-Implement the evidence bundle/hash, reuse, duplicate-run guard, two context tools, typed output, action/citation checks, exact-value draft rendering, and local trace capture. Wire Assess/refresh/retry; save successful output and draft atomically. Record failures without publishing partial drafts. Prevent a late response for one invoice appearing on another selected invoice.
+Implement the evidence bundle/hash, reuse, duplicate-run guard, two context tools, typed output, action/citation checks, an optional suggested email with server-rendered financial wording, one bounded correction, and local trace capture kept on the backend. Offer Assess/refresh/retry only for collection, billing-review, and verify-first invoices. Save successful output; record failures and cancellations without leaving runs open. Prevent a late response for one invoice appearing on another selected invoice.
 
-**Complete / commit:** partial-payment, unsent-billing, and conflicting-note examples lead to different supported actions. Evidence opens saved records; cached results make no model calls; failures leave facts usable. Routine tests fake the provider; a separate live check verifies actual integration.
+**Complete / commit:** partial-payment, unsent-billing, and conflicting-note examples lead to different supported actions; paid and not-yet-due invoices are not assessed. Cached results make no model calls; failures leave facts usable. Routine tests fake the provider; a separate live check verifies actual integration.
 
-## 4. Saved draft handoff — S4
+## 4. Review findings and act — S4
 
-Add subject/body editing, explicit save, and copy with app-only activity records. Preserve originals and earlier edited drafts. Confirm before discarding unsaved text; label stale analysis. A full history browser is unnecessary.
+Show each assessment's findings, cautions, and recommendation with citations that open the evidence saved with that run, using readable labels. Show a suggested email only when present, read-only, with Copy email; an outdated assessment must be refreshed before copying. Label stale analysis. Keep developer diagnostics out of the interface. Pair it with the rule-based next step, which names where to act in the existing accounting, CRM, or project system without inventing links. Keep the summary snapshot and material limitations visible and the detailed calculation scope behind a disclosure.
 
-**Complete / commit:** edits survive reload; revisit reuses analysis; copying uses current saved text; errors distinguish copy from activity persistence. No sending, dismissal, resolution, or source-change controls.
+**Complete / commit:** revisiting reuses analysis; citations show saved records after source changes; outdated results are labeled and their email can't be copied. Copy only writes to the clipboard. Nothing is editable, and there are no sending, outreach tracking, dismissal, resolution, or source-change controls.
 
-## 5. Compact history — S1
+## Planned extension — Compact history
 
 Implement daily step-series and monthly movements using Data.md's selected population and sent/payment dates, including now-paid invoices. Add one expandable chart and calculation scope; no separate analytics page.
 
 **Complete / commit:** chart endpoint equals the summary; monthly reconciliation checks pass; receipt timing is correct; population/currency/timezone assumptions are visible. All financial arithmetic stays on the backend.
 
-## 6. Validate the complete journey
+## Validate the complete journey
 
 Test fresh setup and application restart. Run backend tests, TypeScript checking, focused frontend tests, and the frontend build. Perform a small explicit live assessment check separately from normal tests. Prioritize correct behavior over extra screens or visual effects.
 
@@ -47,10 +47,10 @@ Test fresh setup and application restart. Run backend tests, TypeScript checking
 | Money | Source totals; partial/full payments; no GL duplication or join multiplication; missing/inconsistent evidence is not silently zero. |
 | Time | Due today; July 26–28; Net 30/60/90 dates; later-month receipts; post-cutoff payments excluded. |
 | Triage | Category counts; later note after full payment; unsent billing; absent Ops assignment never invents an owner/blocker. |
-| Agent | Permitted actions/exposed citations; injection ignored; invalid placeholders/numeric literals rejected; no paid-invoice demand; bounded failures; browsing makes no model calls. |
-| Persistence | Input-hash reuse; refresh preserves edits; concurrent duplicate conflict; atomic completion; source-write denial. |
-| UI | Search/select, evidence, loading/errors, no wrong-invoice late response, persisted edits, unsaved warning, copy outcomes. |
+| Agent | Permitted actions/exposed citations; injection ignored; no paid or unsent customer follow-up; paid/not-yet-due not assessed; bounded failures and one correction; email eligibility, recipients, and server-rendered amounts; plain-prose assessment fields; all problems sent to the one correction; browsing makes no model calls. |
+| Persistence | Input-hash reuse; refresh keeps earlier results; concurrent duplicate conflict; cancelled/failed runs recorded; source-write denial. |
+| UI | Search/select, evidence, saved-record citations, loading/errors, no wrong-invoice late response, no assessment offered for paid/not-yet-due; suggested email and copy outcomes; no developer diagnostics shown. |
 
-## Target local commands
+## Local commands
 
-Implement `make db-up` (PostgreSQL), `make db-setup` (explicit restore/schema/grants), `make backend` (uv/Uvicorn, one worker), `make frontend` (Vite), and `make test` (no paid calls). These commands are planned, not included scripts. `.env.example` describes runtime/admin database URLs and model settings without secrets. Setup stops on SQL errors; app startup never restores or resets data.
+Use `make db-up` (PostgreSQL), `make db-setup SOURCE=data/source_data.sql` (restore/schema/grants), `make db-verify` (permissions), `make backend` (uv/Uvicorn, one worker), `make frontend` (Vite), and `make test` (no paid calls). `.env.example` describes the runtime database URL, setup-role credentials, and model settings without secrets. Setup stops on SQL errors; app startup never restores or resets data.

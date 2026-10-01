@@ -44,6 +44,7 @@ export type Contact = {
   ref: string;
   role: "invoice_contact" | "billing_contact";
   name: string;
+  first_name: string | null;
   title: string | null;
   email: string | null;
   phone: string | null;
@@ -89,4 +90,43 @@ export type InvoiceDetail = {
   document: { ref: string; filename: string | null } | null;
   calculation: { ref: string; formula: string; source_refs: string[]; excluded_refs: string[] };
   warnings: Issue[];
+  investigation: InvestigationState;
 };
+
+export type Action = "customer_followup" | "internal_billing_review" | "internal_verification" | "no_outreach";
+export type Finding = { text: string; evidence_refs: string[] };
+
+export type SuggestedEmail = {
+  audience: "customer" | "internal";
+  recipient: { name: string; email: string } | null;
+  subject: string;
+  body: string;
+};
+
+export type Investigation = {
+  id: string;
+  status: "running" | "completed" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  output: {
+    action: Action;
+    summary: string;
+    findings: Finding[];
+    warnings: Finding[];
+    recommendation: Finding;
+  } | null;
+  email: SuggestedEmail | null;
+  cited_records: Record<string, Record<string, unknown>>;
+  error_code: string | null;
+  error_message: string | null;
+};
+
+export type InvestigationState = {
+  available: boolean;
+  applicable: boolean;
+  current: boolean;
+  assessment: Investigation | null;
+  latest_attempt: Investigation | null;
+};
+
+export type InvestigationResult = { investigation: Investigation; reused: boolean };

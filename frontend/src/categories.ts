@@ -8,12 +8,13 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   settled: "Paid in export",
 };
 
+// Where to act; the work itself happens in the existing systems.
 export const NEXT_STEP: Record<Category, string> = {
-  collect: "Customer communication",
-  billing: "Internal billing review",
-  verify: "Finance verification before any customer contact",
+  collect: "Check recent outreach in your CRM or email, then follow up with the customer",
+  billing: "Review the unsent invoice in the accounting system",
+  verify: "Check the payment records with finance before contacting the customer",
   monitor: "No action until the due date",
-  settled: "No collection action",
+  settled: "No action needed",
 };
 
 export const CATEGORY_TONE: Record<Category, { bar: string; soft: string }> = {

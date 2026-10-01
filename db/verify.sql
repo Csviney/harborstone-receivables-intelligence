@@ -45,19 +45,14 @@ SELECT current_user AS runtime_role, rolsuper, rolcreaterole, rolcreatedb,
        (SELECT nspowner::regrole::text FROM pg_namespace WHERE nspname = 'app') AS app_owner
 FROM pg_roles WHERE rolname = current_user;
 
-\echo '== Denied: source writes, DDL, protected app columns, activity mutation'
+\echo '== Denied: source writes, DDL, protected app columns, deleting investigations'
 BEGIN;
 DO $$
 DECLARE
     stmt text;
-    inv  uuid;
-    dft  uuid;
 BEGIN
     INSERT INTO app.investigations (invoice_id, snapshot_as_of, input_hash, analysis_version, model, status, input_json)
-    VALUES ('verify', DATE '2026-07-28', 'verify', 'verify', 'verify', 'running', '{}') RETURNING id INTO inv;
-    INSERT INTO app.drafts (investigation_id, audience, original_subject, original_body, subject, body)
-    VALUES (inv, 'internal', 's', 'b', 's', 'b') RETURNING id INTO dft;
-    INSERT INTO app.activity_events (investigation_id, draft_id, kind) VALUES (inv, dft, 'draft_saved');
+    VALUES ('verify', DATE '2026-07-28', 'verify', 'verify', 'verify', 'running', '{}');
 
     FOREACH stmt IN ARRAY ARRAY[
         'INSERT INTO source_company.dataset_metadata (key, value) VALUES (''verify'', ''x'')',
@@ -67,12 +62,10 @@ BEGIN
         'CREATE TABLE source_company.verify_tmp (x int)',
         'CREATE TABLE app.verify_tmp (x int)',
         'CREATE TABLE public.verify_tmp (x int)',
-        'ALTER TABLE app.drafts ADD COLUMN verify_tmp int',
-        'UPDATE app.drafts SET original_subject = ''changed''',
+        'ALTER TABLE app.investigations ADD COLUMN verify_tmp int',
         'UPDATE app.investigations SET input_hash = ''changed''',
-        'UPDATE app.activity_events SET kind = ''draft_copied''',
-        'DELETE FROM app.activity_events',
-        'DELETE FROM app.drafts'
+        'UPDATE app.investigations SET input_json = ''{}''',
+        'DELETE FROM app.investigations'
     ] LOOP
         BEGIN
             EXECUTE stmt;
@@ -96,17 +89,7 @@ SELECT id AS investigation_id FROM inv \gset
 UPDATE app.investigations
    SET status = 'completed', output_json = '{}', finished_at = now()
  WHERE id = :'investigation_id';
-INSERT INTO app.drafts (investigation_id, audience, original_subject, original_body, subject, body)
-VALUES (:'investigation_id', 'internal', 's', 'b', 's', 'b')
-RETURNING id AS draft_id \gset
-UPDATE app.drafts SET subject = 'edited', body = 'edited', updated_at = now() WHERE id = :'draft_id';
-INSERT INTO app.activity_events (investigation_id, draft_id, kind)
-VALUES (:'investigation_id', :'draft_id', 'draft_saved');
-SELECT i.status, d.original_subject, d.subject, e.kind
-  FROM app.investigations i
-  JOIN app.drafts d ON d.investigation_id = i.id
-  JOIN app.activity_events e ON e.draft_id = d.id
- WHERE i.id = :'investigation_id';
+SELECT status, finished_at IS NOT NULL AS finished FROM app.investigations WHERE id = :'investigation_id';
 ROLLBACK;
 
 \echo '== Verification passed (all writes rolled back)'

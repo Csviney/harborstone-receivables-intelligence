@@ -5,7 +5,8 @@ import { CATEGORY_TONE, NEXT_STEP } from "../categories";
 import { day, money } from "../format";
 import { cn } from "../lib/utils";
 import type { InvoiceDetail as Detail, PaymentPosition, SourceNote } from "../types";
-import EvidencePanel from "./EvidencePanel";
+import BalanceDetails from "./BalanceDetails";
+import InvestigationPanel from "./InvestigationPanel";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -65,7 +66,7 @@ export default function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           <p className="mt-1 text-muted-foreground">{customer?.name ?? "Unknown customer"}</p>
         </div>
         <div className={cn("rounded-lg border px-4 py-2.5", CATEGORY_TONE[position.category].soft)}>
-          <div className="text-xs opacity-80">Next step belongs in</div>
+          <div className="text-xs opacity-80">Next step</div>
           <div className="font-semibold">{NEXT_STEP[position.category]}</div>
           <div className="text-xs opacity-80">{position.reason}</div>
         </div>
@@ -93,6 +94,12 @@ export default function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         {position.overdue_days !== null && <Fact label="Days past due" value={String(position.overdue_days)} />}
         {detail.latest_payment_date && <Fact label="Latest payment" value={day(detail.latest_payment_date)} />}
       </dl>
+
+      <InvestigationPanel
+        key={position.id}
+        invoiceId={position.id}
+        initial={detail.investigation}
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Section title="Customer">
@@ -145,7 +152,7 @@ export default function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       <Notes title="Project notes" notes={detail.project_notes} />
       {detail.invoice_notes && <p className="mt-3 whitespace-pre-wrap">{detail.invoice_notes}</p>}
 
-      <EvidencePanel detail={detail} />
+      <BalanceDetails detail={detail} />
     </Panel>
   );
 }

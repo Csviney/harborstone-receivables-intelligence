@@ -1,44 +1,53 @@
 # Design decisions
 
-Living record. Entries below are accepted planning decisions, **not claims of implemented or tested functionality**. As work progresses, append the relevant change, alternative, rationale, consequence, and actual validation result. Update the authoritative guide in the same change when a contract changes; keep future possibilities in [FutureDirections.md](FutureDirections.md).
+Accepted decisions for the current application. [Product.md](Product.md) defines the journey, [Data.md](Data.md) the financial rules and entities, [Architecture.md](Architecture.md) the implementation boundaries, and [Investigation.md](Investigation.md) the investigation contract. Future capabilities belong in [FutureDirections.md](FutureDirections.md).
 
-| ID | Decision | Rationale and tradeoff |
-|---|---|---|
-| D01 | One invoice-centered review/preparation journey. | A complete operator outcome is more useful than partial CRM, project, and accounting modules. Company-wide visibility is intentionally limited to this workflow. See Product.md. |
-| D02 | Source records remain read-only, including verification cases. | Accounting/CRM/project systems retain authority. A targeted internal request is a legitimate endpoint; no local fixes, dismissals, or case-resolution state. |
-| D03 | Deterministic triage; on-demand AI investigation. | Browsing stays immediate, explainable, and usable without model access. AI is reserved for contextual interpretation and wording, not arithmetic or repeated queue scoring. |
-| D04 | One backend and PostgreSQL; direct Psycopg queries. | The small relational workflow benefits from visible joins and exact arithmetic. No ORM mapping of all source tables, service fleet, or queue infrastructure. |
-| D05 | Fixed source cutoff and narrowly scoped AR reconstruction. | Prevents today's date, current statuses, or due months from being mistaken for a historical ledger/cash forecast. USD display and UTC dates are documented conventions. See Data.md. |
-| D06 | A conservative later-note flag, not automatic textual reconciliation. | Zero balance plus a later note deserves review; it is not proof of contradiction. This can over-flag a benign note, but avoids hardcoded scenarios and an extra triage model. |
-| D07 | Invoice-scoped prefetch, two read-only context tools, saved input hash. | Mandatory evidence cannot be missed; optional tools expose useful context without DB transactions across model latency. Hash reuse needs explicit version changes when behavior changes. |
-| D08 | Backend action/ref validation and exact-value draft substitution. | A short allowlisted substitution function protects generated financial values without a general template framework. It cannot certify the model's prose or later human edits. |
-| D09 | Three app tables: investigations, drafts, activity events. | Saves useful work and observed execution without building a task or email system. Source references are not cross-schema FKs, so source restore remains independent; validate IDs and bundle hashes at the application boundary. |
-| D10 | Local awaited agent runs with bounded execution. | Simpler than durable background work for the single-user demo. Interrupted runs are marked failed; no guarantee of completion after process exit or distributed concurrency. |
-| D11 | Preparation activity, not recovery attribution. | Copied text does not prove delivery, customer response, or causally recovered money. No fake savings/collections counter. |
-| D12 | One screen with progressive disclosure. | A worklist, detail panel, small trend, and expandable evidence are sufficient. The focused mock is a reference, not a mandate for visual or framework complexity. |
+## D01 — One invoice-centred workspace across three systems
 
-## Implementation entries
+Bring accounting, customer, and project context together around a specific receivables decision. Avoid recreating separate accounting, CRM, or project-management applications.
 
-**2026-09-30 — Runnable foundation**
+## D02 — Source systems retain ownership
 
-- **Review works without the model.** Source review needs only the database; missing model settings disable assessment, not the app. If the database is down, the app still starts, reports it, and recovers without a restart. Validated by running without model settings and by stopping and restarting the database.
-- **Source records and generated text are protected by the database, not only the UI.** The runtime role can read source data but not change it, cannot alter a draft's original generated text, and can only append activity events (supports D02, D09, D11). Validated by setup checks and tests.
-- **The model must be constrained to permitted actions.** `gpt-4o-mini` handles tool calls and structured output. In an early unconstrained check it proposed billing review for a paid invoice with a conflicting note, where Data.md requires verification. Investigations will therefore supply the allowed actions and reject anything outside them.
+Source records are read-only. Users investigate here and act in the existing systems; the app does not send messages, update balances, assign work, or mark issues resolved.
 
-**2026-09-30 — Source-backed review**
+## D03 — Financial facts and triage are deterministic
 
-- **The worklist opens on Collections with the most overdue invoice selected.** Billing review and Verify first are one click away; All adds not-yet-due and paid invoices. Search and selection persist across filters.
-- **Unsent invoices show face value only.** Billing-review items have no paid, remaining, or aging figures, so they never read as collectible debt.
-- **Each invoice states where its next step belongs:** customer communication, internal billing review, finance verification, or no action. This follows from the triage category, not from AI. Validated against Data.md's totals, the 5/4/2/4/6 split, and the reference invoices.
+Server-side Decimal/date calculations determine balances, aging, totals, categories, and the category behind the basic next step. AI cannot change those results. Missing or conflicting evidence remains explicit; a later note is a review trigger, not proof that payment records are wrong.
 
-Use a compact entry when a material choice changes or is validated:
+## D04 — Reporting has a defined snapshot and population
 
-```text
-Date / commit — Decision or finding
-Choice and alternative:
-Reason / business consequence:
-Validation actually performed:
-Guides affected:
-```
+Calculations use the source cutoff, not today's date. Sent AR, unsent billing, and failed-sync exceptions remain distinct. The planned historical trend must reconcile receipts and new billings without implying a complete accounting ledger.
 
-Do not invent precision to settle an ambiguity. A new financial interpretation needs explicit supporting evidence or a documented assumption, not a silent change to totals.
+## D05 — AI investigation is optional and manually triggered
+
+Normal review works without AI. Investigations interpret relevant notes and cross-system context when useful; ordinary paid and not-yet-due invoices do not need assessment. Browsing never triggers model calls.
+
+## D06 — AI adds context rather than repeating the screen
+
+Assessments give a concise conclusion and actionable guidance. Findings appear only when they qualify the next step. Missing assignments or outreach history must not become invented blockers or claims.
+
+## D07 — Structured output is backed by server validation
+
+Validate permitted actions, exposed citations, recipients, and email/prose boundaries. Allow one correction containing all detected problems within fixed execution limits. Citations establish provenance, not semantic correctness; model interpretation still requires review.
+
+## D08 — Suggested emails are read-only preparation aids
+
+Offer an email only when appropriate, with server-rendered financial wording. Users copy, edit, and send externally. There is no draft-management workflow, copy tracking, or implication that outreach occurred.
+
+## D09 — Investigations preserve evidence and can be reused
+
+Store each run's inputs, output, optional email template, and diagnostics in one application table. Reuse unchanged results; label stale results and require refresh before copying an outdated email. Citations show the evidence saved with the investigation. Refreshes preserve earlier records.
+
+## D10 — The interface is for AR staff
+
+Prioritise facts, the next step, concise findings, and useful warnings. Keep balance calculations and saved citations behind disclosures. Model names, token counts, costs, and execution traces stay off the user-facing screen.
+
+## D11 — Keep the architecture small and enforce boundaries
+
+Use one React frontend, one FastAPI backend, PostgreSQL, explicit SQL, and a bounded agent. Separate source reads, financial logic, and investigation persistence. Prefetch invoice-scoped evidence and expose it through two read-only context tools. Database permissions enforce read-only source access; no database connection stays borrowed during model calls. Local runs are awaited, with unfinished runs marked interrupted on restart; no background execution service is required.
+
+Remove demonstrably unused code, but retain contract-backed source fields unless there is a deliberate reason to narrow the contract.
+
+## D12 — Validate financial correctness separately from model quality
+
+Regression tests protect calculations and workflows; scripted models test validation and failure handling. Live checks assess actual model behaviour. Neither passing tests nor copied emails establish recovered cash or business impact. Outcome measurement requires refreshed data and a baseline, and observed improvement alone does not establish causation.

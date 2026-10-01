@@ -62,16 +62,21 @@ export default function App() {
           <SummaryCard label="Overdue" bucket={summary.overdue} accent="border-t-red-500" />
           <SummaryCard label="Unsent billing" bucket={summary.unsent_billing} accent="border-t-amber-500" />
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {summary.scope}
-          {summary.sync_failed.count > 0 &&
-            ` Excludes ${summary.sync_failed.count} invoice(s) with a failed accounting sync (${money(summary.sync_failed.amount)}).`}
-        </p>
+        {summary.sync_failed.count > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Excludes {summary.sync_failed.count} invoice(s) with a failed accounting sync (
+            {money(summary.sync_failed.amount)}).
+          </p>
+        )}
         {summary.limitations.map((limitation) => (
           <p key={limitation} className="mt-1 text-xs text-red-700">
             {limitation}
           </p>
         ))}
+        <details className="mt-1 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">How these totals are calculated</summary>
+          <p className="mt-1">{summary.scope}</p>
+        </details>
       </section>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(340px,420px)_1fr]">

@@ -1,10 +1,10 @@
 # Data and financial contract
 
-This file owns source relationships, calculated fields, triage, historical reconstruction, and application entities. These are implementation rules for the selected export, not a claim that the extract is a reconciled accounting ledger. [Reference reviews](reference/Data_Reconcilable.md) cover broader possibilities; [unresolved evidence](reference/Data_Unresolved.md) remains unresolved.
+This file owns source relationships, calculated fields, triage, historical reconstruction, and application entities. These are implementation rules for the selected export, not a claim that the extract is a reconciled accounting ledger.
 
 ## Source and assumptions
 
-Input: [source_data.sql](reference/source_data.sql), schema `source_company`, 42 tables / 1,075 rows. `dataset_metadata.dataset_as_of` is **2026-07-28** and the dataset declares itself synthetic. Original file SHA-256:
+Input: [source_data.sql](../data/source_data.sql), schema `source_company`, 42 tables / 1,075 rows. `dataset_metadata.dataset_as_of` is **2026-07-28** and the dataset declares itself synthetic. Original file SHA-256:
 
 ```text
 776ddd451c21f5fa85696b2ad5b170e1a1358bb08db54d813a441ce9a9247906
@@ -29,7 +29,7 @@ Preserve the dump. Source IDs are strings, not universally valid UUIDs. The thre
 
 There is one project for each won opportunity in this extract. Project IDs happen to equal opportunity IDs, but join on `projects.opportunity_id`, not that coincidence. Project site names are null: display the linked opportunity's site name with its provenance. Source project/opportunity statuses describe different stages.
 
-Use left joins for optional context. Missing context must not remove an invoice from the worklist. Aggregate payments **per invoice before joining** assignments, notes, or other one-to-many records; otherwise receipt amounts multiply. Return multiple assignments as a list, not duplicate financial rows. If unexpected multiple linked projects exist, retain a warning rather than choosing an arbitrary row.
+Use left joins for optional context. Missing context must not remove an invoice from the worklist. Fetch payments separately and aggregate **per invoice**, avoiding joins to assignments, notes, or other one-to-many records that would multiply receipt amounts. Return multiple assignments as a list, not duplicate financial rows. If unexpected multiple linked projects exist, retain a warning rather than choosing an arbitrary row.
 
 Suggested customer contact: invoice contact first, then company billing contact with an explicit fallback label. Preserve mismatches between a contact's company and the billed company for review. Missing operations ownership is a warning, not proof that the customer should not be contacted. Internal finance/billing recipients are not supplied as a team mailbox; do not invent one.
 
@@ -81,8 +81,8 @@ Evaluate in order. Rule-based warnings may conservatively ask for review; they d
 | 1. `verify` — Verify first | `SYNC_FAILED`; unsupported status or inconsistent required facts; or a zero-balance invoice with an invoice note dated after its latest recorded payment. | Internal verification or no outreach; never a customer payment demand. |
 | 2. `billing` — Billing review | `DRAFT` or `APPROVED`, no send date, without a higher-priority integrity exception. | Internal billing review, internal verification, or no outreach. |
 | 3. `collect` — Collection follow-up | `SENT`, positive remaining balance, valid send date, due before cutoff, no blocking verification flag. | Customer follow-up, internal verification, or no outreach. |
-| 4. `monitor` — Not yet due | `SENT`, positive balance, due on/after cutoff. | No overdue outreach; no draft in this MVP. |
-| 5. `settled` — Paid in export | `SENT`, zero balance, no higher-priority exception. | No collection outreach; no draft. |
+| 4. `monitor` — Not yet due | `SENT`, positive balance, due on/after cutoff. | Not assessed; the facts are sufficient. |
+| 5. `settled` — Paid in export | `SENT`, zero balance, no higher-priority exception. | Not assessed; the facts are sufficient. |
 
 A missing due date, negative balance, SENT row without a valid send date, or DRAFT/APPROVED row with a send date routes to verification. Missing a customer email changes the available recipient, not the accounting balance; propose internal verification rather than inventing an address.
 
@@ -93,6 +93,8 @@ Expected partition: **5 collect / 4 billing / 2 verify / 4 monitor / 6 settled =
 Ordering: Collections by overdue days descending, remaining balance descending, then invoice number. Billing by COMPLETED/CLOSED project first, invoice total descending, then invoice number. Verify first by evidence conflict before sync failure, then invoice number; new integrity exceptions go first. All groups verify, collect, billing, monitor, settled; apply the same within-group rules. Monitor sorts by due date, then invoice number. No numerical “recovery score” or expected-cash ranking.
 
 ## F5 — Compact historical trend
+
+Planned extension; the current application does not expose a trend endpoint or chart.
 
 Use all 16 invoices in the current SENT population, **including those now fully paid**. For each UTC day May 1–July 28, 2026:
 
@@ -143,26 +145,21 @@ erDiagram
     SOURCE_OPPORTUNITY ||--o{ SOURCE_AR_INVOICE : contextualizes
     SOURCE_OPPORTUNITY ||--o{ SOURCE_PROJECT : links
     SOURCE_AR_INVOICE ||--o{ INVESTIGATION : referenced_by
-    INVESTIGATION ||--o| DRAFT : produces
-    INVESTIGATION ||--o{ ACTIVITY_EVENT : records
-    DRAFT o|--o{ ACTIVITY_EVENT : concerns
 ```
 
-The invoice-to-investigation link is a logical source reference, not a cross-schema FK. Create only three application tables; use app UUID primary keys, app-local foreign keys, and UTC audit timestamps.
+The invoice-to-investigation link is a logical source reference, not a cross-schema FK. Create one application table; use an app UUID primary key and UTC audit timestamps.
 
 | Table | Fields / constraints |
 |---|---|
 | `app.investigations` | `id`, `invoice_id` string, `snapshot_as_of` date, `input_hash`, `analysis_version`, `model`, `status` (running/completed/failed), `input_json`, nullable `output_json`, `trace_json`, nullable `usage_json`, `started_at`, nullable `finished_at`, nullable sanitized `error_code` / `error_message`. Index invoice/start time; partial unique invoice/input_hash while running. |
-| `app.drafts` | `id`, unique `investigation_id` FK, `audience` (customer/internal), nullable `recipient_ref`, `original_subject`, `original_body`, `subject`, `body`, `created_at`, `updated_at`. Originals never change. No source-update/status fields. |
-| `app.activity_events` | `id`, `investigation_id` FK, nullable `draft_id` FK, `kind` (assessment_completed/draft_saved/draft_copied), `created_at`. Append-only application activity; no invented authenticated actor. |
 
-`InvoicePosition` and `ARTrend` are computed responses, not stored balance tables. Position includes invoice/source IDs, display context, source status, total/paid/remainder, derived payment position, overdue days, category, reason, warnings, and evidence references. Trend contains date/amount points, population label, monthly movements, and limitations. Keep input JSON scoped to the selected invoice and its related entities, not the entire dump.
+`InvoicePosition`, summary buckets, and calculation evidence are computed responses, not stored tables. Position includes the invoice ID, display context, source status, total/paid/remainder, payment position, overdue days, category, reason, and warnings; the detail response carries calculation/source references. Assessment fields and the optional email template are stored in `output_json`; the rendered email is returned from the saved evidence. Keep `input_json` scoped to the selected invoice and its related entities, not the entire dump. The planned trend response would contain date/amount points, population label, monthly movements, and limitations.
 
 ## Evidence and reuse identity
 
 A source evidence reference identifies a table and source ID, e.g. `source_company.ar_payments:<id>`. A calculation reference such as `calc:invoice_position:<invoice_id>` carries its formula name, values, and contributing source refs. The backend constructs these references and their payloads. Model citations can select only references actually exposed during that run; existence in the database alone is not sufficient.
 
-Persist the input evidence and returned tool sections with the investigation. This is the record of what the assessment saw, not a claim that the model's interpretation is verified. Use canonical JSON (stable key/row order, Decimal strings, ISO dates, preserved nulls) to hash the complete permitted invoice bundle plus cutoff, analysis version, and effective model configuration. Exclude application retrieval/run timestamps and mutable draft/activity content from the hash. Source records' own dates/content remain included. This supports safe reuse and stale detection without a background cache service.
+Persist the input evidence and returned tool sections with the investigation. This is the record of what the assessment saw, not a claim that the model's interpretation is verified. Use canonical JSON (stable key/row order, Decimal strings, ISO dates, preserved nulls) to hash the complete permitted invoice bundle plus cutoff, analysis version, and effective model configuration. Exclude application retrieval/run timestamps from the hash. Source records' own dates/content remain included. This supports safe reuse and stale detection without a background cache service.
 
 ## Source locators
 

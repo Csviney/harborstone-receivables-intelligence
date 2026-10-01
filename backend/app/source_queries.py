@@ -12,13 +12,12 @@ SELECT i.id, i.invoice_number, i.status, i.total, i.subtotal, i.tax_amount, i.no
        (i.approval_date AT TIME ZONE 'UTC')::date AS approval_date,
        i.company_id, c.name AS customer_name, i.contact_id, i.opportunity_id, i.document_id,
        o.legacy_opportunity_number AS job_number, o.site_name AS job_name,
-       pr.project_count, pr.project_status
+       pr.project_status
 FROM source_company.ar_invoices i
 LEFT JOIN source_company.companies c ON c.id = i.company_id
 LEFT JOIN source_company.opportunities o ON o.id = i.opportunity_id
 LEFT JOIN LATERAL (
-    SELECT count(*) AS project_count,
-           CASE WHEN count(*) = 1 THEN max(p.status) END AS project_status
+    SELECT CASE WHEN count(*) = 1 THEN max(p.status) END AS project_status
     FROM source_company.projects p
     WHERE p.opportunity_id = i.opportunity_id
 ) pr ON true

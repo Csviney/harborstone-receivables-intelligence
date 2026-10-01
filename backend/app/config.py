@@ -5,6 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
+# Bump when the prompt, output schema, tools, or action rules change; saved assessments become outdated.
+ANALYSIS_VERSION = "5"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env", extra="ignore")
@@ -17,6 +20,7 @@ class Settings(BaseSettings):
     agent_max_turns: int = 4
     agent_max_tool_attempts: int = 6
     agent_timeout_seconds: float = 60.0
+    agent_provider_retries: int = 1
 
     @field_validator("openai_api_key", "openai_model", mode="before")
     @classmethod

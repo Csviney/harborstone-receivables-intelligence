@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -77,6 +77,7 @@ class Contact(BaseModel):
     ref: str
     role: Literal["invoice_contact", "billing_contact"]
     name: str
+    first_name: str | None
     title: str | None
     email: str | None
     phone: str | None
@@ -157,3 +158,79 @@ class InvoiceDetail(BaseModel):
     document: Document | None
     calculation: Calculation
     warnings: list[Issue]
+    investigation: "InvestigationState | None" = None
+
+
+Action = Literal["customer_followup", "internal_billing_review", "internal_verification", "no_outreach"]
+
+
+class Finding(BaseModel):
+    text: str
+    evidence_refs: list[str]
+
+
+class Assessment(BaseModel):
+    action: Action
+    summary: str
+    findings: list[Finding]
+    warnings: list[Finding]
+    recommendation: Finding
+
+
+class EmailTemplate(BaseModel):
+    audience: Literal["customer", "internal"]
+    recipient_ref: str | None
+    subject_template: str
+    body_template: str
+
+
+class AssessmentOutput(Assessment):
+    """What the model returns. The email is a template; the server fills in names, amounts, and dates."""
+
+    email: EmailTemplate | None
+
+
+class Recipient(BaseModel):
+    name: str
+    email: str
+
+
+class SuggestedEmail(BaseModel):
+    audience: Literal["customer", "internal"]
+    recipient: Recipient | None
+    subject: str
+    body: str
+
+
+class Investigation(BaseModel):
+    id: str
+    status: Literal["running", "completed", "failed"]
+    started_at: datetime
+    finished_at: datetime | None
+    output: Assessment | None
+    email: SuggestedEmail | None
+    # The cited records as they were when this assessment ran.
+    cited_records: dict[str, dict]
+    error_code: str | None
+    error_message: str | None
+
+
+class InvestigationState(BaseModel):
+    available: bool
+    # Only invoices with something to interpret (collect, billing, verify) are assessed.
+    applicable: bool
+    current: bool
+    assessment: Investigation | None
+    latest_attempt: Investigation | None
+
+
+class InvestigationRequest(BaseModel):
+    refresh: bool = False
+
+
+class InvestigationResult(BaseModel):
+    investigation: Investigation
+    reused: bool
+
+
+InvoiceDetail.model_rebuild()

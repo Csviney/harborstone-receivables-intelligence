@@ -46,8 +46,8 @@ def test_health_unavailable_when_database_down(settings):
         "UPDATE source_company.ar_invoices SET status = status",
         "DELETE FROM source_company.ar_payments",
         "CREATE TABLE app.test_tmp (x int)",
-        "UPDATE app.drafts SET original_body = 'x'",
-        "DELETE FROM app.activity_events",
+        "UPDATE app.investigations SET input_hash = 'x'",
+        "DELETE FROM app.investigations",
     ],
 )
 def test_runtime_role_cannot_write_source_or_protected_app_data(settings: Settings, statement: str):
@@ -57,7 +57,7 @@ def test_runtime_role_cannot_write_source_or_protected_app_data(settings: Settin
         conn.rollback()
 
 
-def test_runtime_role_can_write_app_workflow_rows(settings: Settings):
+def test_runtime_role_can_record_an_investigation_run(settings: Settings):
     with psycopg.connect(settings.database_url) as conn:
         try:
             (investigation_id,) = conn.execute(
@@ -69,18 +69,8 @@ def test_runtime_role_can_write_app_workflow_rows(settings: Settings):
                 "UPDATE app.investigations SET status = 'completed', output_json = '{}', finished_at = now() WHERE id = %s",
                 (investigation_id,),
             )
-            (draft_id,) = conn.execute(
-                "INSERT INTO app.drafts (investigation_id, audience, original_subject, original_body, subject, body)"
-                " VALUES (%s, 'internal', 's', 'b', 's', 'b') RETURNING id",
-                (investigation_id,),
-            ).fetchone()
-            conn.execute("UPDATE app.drafts SET subject = 'edited', updated_at = now() WHERE id = %s", (draft_id,))
-            conn.execute(
-                "INSERT INTO app.activity_events (investigation_id, draft_id, kind) VALUES (%s, %s, 'draft_saved')",
-                (investigation_id, draft_id),
-            )
-            row = conn.execute("SELECT original_subject, subject FROM app.drafts WHERE id = %s", (draft_id,)).fetchone()
-            assert row == ("s", "edited")
+            row = conn.execute("SELECT status FROM app.investigations WHERE id = %s", (investigation_id,)).fetchone()
+            assert row == ("completed",)
         finally:
             conn.rollback()
 
